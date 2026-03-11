@@ -4,9 +4,14 @@ This module provides functionality to convert motion data from GMR format to Mim
 Usage:
     Command line:
         python tools/data_format/gmr_to_mimickit.py
-    Required arguments:
+    Required arguments (choose one mode):
+        [single file mode]
         --input_file PATH       Path to the input GMR pickle file
         --output_file PATH      Path to save the output MimicKit pickle file
+
+        [batch folder mode]
+        --input_folder PATH     Path to a folder containing GMR pickle files
+        --output_folder PATH    Path to a folder to save converted MimicKit pickle files
     Optional arguments:
         --loop {wrap,clamp}     Loop mode for the motion (default: wrap)
         --start_frame INT       Start frame for motion clipping (default: 0)
@@ -28,6 +33,7 @@ Output:
 """
 
 import argparse
+import os
 import pickle
 import numpy as np
 import sys
@@ -38,6 +44,44 @@ sys.path.append(".")  # Ensure the repository root is on sys.path so we can use 
 
 from mimickit.anim.motion import Motion, LoopMode
 from mimickit.util.torch_util import quat_to_exp_map
+
+
+def _register_numpy_pickle_compat_aliases():
+    """
+    Register module aliases to improve pickle compatibility between NumPy versions.
+
+    Some pickle files created in a different NumPy version may reference
+    internal module paths like `numpy._core.*` or `numpy.core.*`.
+    """
+    try:
+        import numpy.core as np_core
+
+        # NumPy<2 may not expose numpy._core, but pickles from NumPy>=2 can reference it.
+        sys.modules.setdefault("numpy._core", np_core)
+
+        if hasattr(np_core, "multiarray"):
+            sys.modules.setdefault("numpy._core.multiarray", np_core.multiarray)
+        if hasattr(np_core, "numeric"):
+            sys.modules.setdefault("numpy._core.numeric", np_core.numeric)
+    except Exception:
+        # Best-effort compatibility shim.
+        pass
+
+
+def _load_pickle_compat(file_path):
+    """
+    Load pickle with compatibility fallback for NumPy internal module paths.
+    """
+    try:
+        with open(file_path, "rb") as f:
+            return pickle.load(f)
+    except ModuleNotFoundError as e:
+        # Common cross-version error: No module named 'numpy._core'
+        if "numpy._core" in str(e):
+            _register_numpy_pickle_compat_aliases()
+            with open(file_path, "rb") as f:
+                return pickle.load(f)
+        raise
 
 def convert_gmr_to_mimickit(gmr_file_path, output_file_path, loop_mode, start_frame, end_frame, output_fps):
     """
@@ -56,8 +100,7 @@ def convert_gmr_to_mimickit(gmr_file_path, output_file_path, loop_mode, start_fr
         raise ValueError(f"Invalid loop_mode: {loop_mode}. Choose 'wrap' or 'clamp'.")
     
     # Load GMR format data
-    with open(gmr_file_path, 'rb') as f:
-        gmr_data = pickle.load(f)
+    gmr_data = _load_pickle_compat(gmr_file_path)
     
     # Extract data from GMR format
     fps = gmr_data['fps']
@@ -119,17 +162,115 @@ def convert_gmr_to_mimickit(gmr_file_path, output_file_path, loop_mode, start_fr
 
     return out_data
 
+
+def convert_gmr_folder_to_mimickit(input_folder, output_folder, loop_mode, start_frame, end_frame, output_fps):
+    """
+    Convert all .pkl files in a folder from GMR format to MimicKit format.
+
+    Args:
+        input_folder (str): Directory containing input GMR pickle files
+        output_folder (str): Directory to save converted MimicKit pickle files
+    """
+    if not os.path.isdir(input_folder):
+        raise ValueError(f"Input folder does not exist or is not a directory: {input_folder}")
+
+    os.makedirs(output_folder, exist_ok=True)
+
+    input_files = sorted(
+        [file_name for file_name in os.listdir(input_folder) if file_name.lower().endswith(".pkl")]
+    )
+
+    if len(input_files) == 0:
+        raise ValueError(f"No .pkl files found in input folder: {input_folder}")
+
+    print("\n" + "=" * 60)
+    print("🚀 BATCH CONVERSION START")
+    print("=" * 60)
+    print(f"📂 Input Folder:  {input_folder}")
+    print(f"📂 Output Folder: {output_folder}")
+    print(f"📦 Files to convert: {len(input_files)}")
+    print("=" * 60 + "\n")
+
+    success_count = 0
+    failure_files = []
+
+    for idx, input_name in enumerate(input_files, start=1):
+        input_path = os.path.join(input_folder, input_name)
+        output_path = os.path.join(output_folder, input_name)
+
+        print(f"[{idx}/{len(input_files)}] Converting: {input_name}")
+
+        try:
+            convert_gmr_to_mimickit(
+                input_path,
+                output_path,
+                loop_mode=loop_mode,
+                start_frame=start_frame,
+                end_frame=end_frame,
+                output_fps=output_fps,
+            )
+            success_count += 1
+        except Exception as e:
+            print(f"❌ Failed: {input_name} -> {e}")
+            failure_files.append((input_name, str(e)))
+
+    print("\n" + "=" * 60)
+    print("📌 BATCH CONVERSION SUMMARY")
+    print("=" * 60)
+    print(f"✅ Succeeded: {success_count}/{len(input_files)}")
+    print(f"❌ Failed:    {len(failure_files)}/{len(input_files)}")
+
+    if failure_files:
+        print("-" * 60)
+        for file_name, err in failure_files:
+            print(f"• {file_name}: {err}")
+
+    print("=" * 60 + "\n")
+
 def main():
     parser = argparse.ArgumentParser(description="Convert GMR motion data to MimicKit format.")
-    parser.add_argument("--input_file", required=True, help="Path to the input GMR pickle file")
-    parser.add_argument("--output_file", required=True, help="Path to the output MimicKit pickle file")
+    parser.add_argument("--input_file", help="Path to the input GMR pickle file")
+    parser.add_argument("--output_file", help="Path to the output MimicKit pickle file")
+    parser.add_argument("--input_folder", help="Path to a folder containing input GMR pickle files")
+    parser.add_argument("--output_folder", help="Path to a folder for output MimicKit pickle files")
     parser.add_argument("--loop", default="wrap", choices=["wrap", "clamp"], help="Enable loop mode on the converted motion")
     parser.add_argument("--start_frame", type=int, default=0, help="Start frame for chopping the motion")
     parser.add_argument("--end_frame", type=int, default=-1, help="End frame for chopping the motion")
     parser.add_argument("--output_fps", type=int, default=-1, help="Frame rate for the output motion (default: same as input)")
     args = parser.parse_args()
 
-    convert_gmr_to_mimickit(args.input_file, args.output_file, loop_mode=args.loop, start_frame=args.start_frame, end_frame=args.end_frame, output_fps=args.output_fps)
+    single_file_mode = args.input_file is not None or args.output_file is not None
+    folder_mode = args.input_folder is not None or args.output_folder is not None
+
+    if single_file_mode and folder_mode:
+        parser.error("Use either file mode (--input_file/--output_file) or folder mode (--input_folder/--output_folder), not both.")
+
+    if single_file_mode:
+        if not args.input_file or not args.output_file:
+            parser.error("In file mode, both --input_file and --output_file are required.")
+
+        convert_gmr_to_mimickit(
+            args.input_file,
+            args.output_file,
+            loop_mode=args.loop,
+            start_frame=args.start_frame,
+            end_frame=args.end_frame,
+            output_fps=args.output_fps,
+        )
+    elif folder_mode:
+        if not args.input_folder or not args.output_folder:
+            parser.error("In folder mode, both --input_folder and --output_folder are required.")
+
+        convert_gmr_folder_to_mimickit(
+            args.input_folder,
+            args.output_folder,
+            loop_mode=args.loop,
+            start_frame=args.start_frame,
+            end_frame=args.end_frame,
+            output_fps=args.output_fps,
+        )
+    else:
+        parser.error("Provide either file mode arguments or folder mode arguments.")
 
 
 if __name__ == "__main__":

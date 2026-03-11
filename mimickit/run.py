@@ -1,8 +1,11 @@
 import numpy as np
 import os
+import subprocess
 import shutil
 import sys
+import tempfile
 import time
+import yaml
 
 import envs.env_builder as env_builder
 import learning.agent_builder as agent_builder
@@ -34,8 +37,24 @@ def build_env(args, num_envs, device, visualize):
     env_file = args.parse_string("env_config")
     engine_file = args.parse_string("engine_config")
     record_video = args.parse_bool("video", False)
+    motion_file = args.parse_string("motion_file", "")
+
+    if (motion_file != ""):
+        with open(env_file, "r") as stream:
+            env_config = yaml.safe_load(stream)
+
+        env_config["motion_file"] = motion_file
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as tmp_file:
+            yaml.safe_dump(env_config, tmp_file, sort_keys=False)
+            tmp_env_file = tmp_file.name
+        env_file = tmp_env_file
     
     env = env_builder.build_env(env_file, engine_file, num_envs, device, visualize=visualize, record_video=record_video)
+
+    if (motion_file != ""):
+        os.remove(tmp_env_file)
+
     return env
 
 def build_agent(args, env, device):
@@ -43,8 +62,8 @@ def build_agent(args, env, device):
     agent = agent_builder.build_agent(agent_file, env, device)
     return agent
 
-def train(agent, max_samples, out_dir, save_int_models, logger_type):
-    agent.train_model(max_samples=max_samples, out_dir=out_dir, 
+def train(agent, max_samples, max_iters, out_dir, save_int_models, logger_type):
+    agent.train_model(max_samples=max_samples, max_iters=max_iters, out_dir=out_dir, 
                       save_int_models=save_int_models, logger_type=logger_type)
     return
 
@@ -104,6 +123,7 @@ def run(rank, num_procs, device, master_port, args):
     out_dir = args.parse_string("out_dir", "output/")
     save_int_models = args.parse_bool("save_int_models", False)
     max_samples = args.parse_int("max_samples", np.iinfo(np.int64).max)
+    max_iters = args.parse_int("max_iters", 30000)
 
     mp_util.init(rank, num_procs, device, master_port)
 
@@ -119,7 +139,7 @@ def run(rank, num_procs, device, master_port, args):
 
     if (mode == "train"):
         save_config_files(args, out_dir)
-        train(agent=agent, max_samples=max_samples, out_dir=out_dir, 
+        train(agent=agent, max_samples=max_samples, max_iters=max_iters, out_dir=out_dir, 
               save_int_models=save_int_models, logger_type=logger_type)
         
     elif (mode == "test"):
@@ -134,6 +154,85 @@ def run(rank, num_procs, device, master_port, args):
 def main(argv):
     root_rank = 0
     args = load_args(argv)
+
+    input_folder = args.parse_string("input_folder", "")
+    if (input_folder != ""):
+        out_dir_root = args.parse_string("out_dir", "output/")
+        os.makedirs(out_dir_root, exist_ok=True)
+
+        motion_files = [
+            os.path.join(input_folder, f)
+            for f in sorted(os.listdir(input_folder))
+            if f.lower().endswith(".pkl")
+        ]
+
+        assert(len(motion_files) > 0), "No .pkl files found in input_folder: {}".format(input_folder)
+
+        print("\n" + "=" * 60)
+        print("🚀 BATCH TRAIN START")
+        print("=" * 60)
+        print("Input folder:  {}".format(input_folder))
+        print("Output root:   {}".format(out_dir_root))
+        print("Num motions:   {}".format(len(motion_files)))
+        print("=" * 60 + "\n")
+
+        base_tokens = argv[1:]
+
+        def _remove_arg(tokens, key):
+            out = []
+            i = 0
+            target = "--" + key
+            while (i < len(tokens)):
+                if (tokens[i] == target):
+                    i += 1
+                    while (i < len(tokens) and not tokens[i].startswith("--")):
+                        i += 1
+                else:
+                    out.append(tokens[i])
+                    i += 1
+            return out
+
+        base_tokens = _remove_arg(base_tokens, "input_folder")
+        base_tokens = _remove_arg(base_tokens, "motion_file")
+        base_tokens = _remove_arg(base_tokens, "out_dir")
+
+        success = 0
+        failed = []
+
+        for i, motion_file in enumerate(motion_files):
+            motion_name = os.path.splitext(os.path.basename(motion_file))[0]
+            curr_out_dir = os.path.join(out_dir_root, motion_name)
+            os.makedirs(curr_out_dir, exist_ok=True)
+
+            cmd = [
+                sys.executable,
+                os.path.abspath(__file__),
+                *base_tokens,
+                "--input_folder", "",
+                "--motion_file", motion_file,
+                "--out_dir", curr_out_dir,
+            ]
+
+            print("[{}/{}] Training motion: {}".format(i + 1, len(motion_files), motion_file))
+            result = subprocess.run(cmd)
+
+            if (result.returncode == 0):
+                success += 1
+            else:
+                failed.append((motion_file, result.returncode))
+
+        print("\n" + "=" * 60)
+        print("📌 BATCH TRAIN SUMMARY")
+        print("=" * 60)
+        print("✅ Succeeded: {}/{}".format(success, len(motion_files)))
+        print("❌ Failed:    {}/{}".format(len(failed), len(motion_files)))
+        if (len(failed) > 0):
+            print("-" * 60)
+            for f, code in failed:
+                print("• {} (exit={})".format(f, code))
+        print("=" * 60 + "\n")
+        return
+
     master_port = args.parse_int("master_port", None)
     devices = args.parse_strings("devices", ["cuda:0"])
     

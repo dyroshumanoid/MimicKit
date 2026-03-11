@@ -49,7 +49,7 @@ class BaseAgent(torch.nn.Module):
         self._curr_info = None
         return
 
-    def train_model(self, max_samples, out_dir, save_int_models, logger_type):
+    def train_model(self, max_samples, max_iters, out_dir, save_int_models, logger_type):
         start_time = time.time()
 
         out_model_file = os.path.join(out_dir, "model.pt")
@@ -66,11 +66,11 @@ class BaseAgent(torch.nn.Module):
         self._curr_obs, self._curr_info = self._reset_envs()
         self._init_train()
 
-        while self._sample_count < max_samples:
+        while self._sample_count < max_samples and self._iter < max_iters:
             train_info = self._train_iter()
             
             self._sample_count = self._update_sample_count()
-            output_iter = (self._iter % self._iters_per_output == 0) or (self._sample_count >= max_samples)
+            output_iter = (self._iter % self._iters_per_output == 0) or (self._sample_count >= max_samples) or ((self._iter + 1) >= max_iters)
 
             if (output_iter):
                 test_info = self.test_model(self._test_episodes)
