@@ -1,8 +1,8 @@
 env_name: "view_motion"
 char_file: "data/assets/tocabi/tocabi.xml"
-motion_file: "data/motions/tocabi/tocabi_walk_jump.pkl"
+motion_file: "data/motions/tocabi/tocabi_jump.pkl"
 camera_mode: "track"
 episode_length: 20.0
 global_obs: False
 root_height_obs: True
-key_bodies: ["head", "right_hand", "left_hand", "left_foot", "right_foot"]
+key_bodies: ["base_link", "left_foot", "right_foot"]

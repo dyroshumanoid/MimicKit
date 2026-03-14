@@ -21,23 +21,15 @@ ref_char_offset: [2.0, 0.0, 0.0] # m
 # [root_pos(3), root_rot_expmap(3), joint_angles(33)]
 # Joints: L_HipYaw/Roll/Pitch, L_Knee, L_AnklePitch/Roll,
 #         R_HipYaw/Roll/Pitch, R_Knee, R_AnklePitch/Roll,
-#         Waist1/2, Upperbody,
-#         L_Shoulder1/2/3, L_Armlink, L_Elbow, L_Forearm, L_Wrist1/2,
-#         Neck, Head,
-#         R_Shoulder1/2/3, R_Armlink, R_Elbow, R_Forearm, R_Wrist1/2
 init_pose: [0, 0, 0.77, 0, 0, 0,
             0.0, 0.0, -0.24, 0.6, -0.36, 0.0,
-            0.0, 0.0, -0.24, 0.6, -0.36, 0.0,
-            0.0, 0.0, 0.0,
-            0.2618, 0.1745, 1.3963, -1.2217, -0.7854, 0.0, 0.0, 0.0,
-            0.0, 0.0,
-            -0.2618, -0.1745, -1.3963, 1.2217, 0.7854, 0.0, 0.0, 0.0]
+            0.0, 0.0, -0.24, 0.6, -0.36, 0.0]
 
 enable_early_termination: True
-key_bodies: ["head", "left_hand", "right_hand", "left_foot", "right_foot"]
-contact_bodies: ["left_foot", "right_foot"]
+key_bodies: ["base_link", "left_foot", "right_foot"]
+contact_bodies: ["base_link", "head", "left_hand", "right_hand", "left_foot", "right_foot"]
 
-motion_file: "data/motions/tocabi/tocabi_walk_jump.pkl"
+motion_file: "data/motions/tocabi/tocabi_jump.pkl"
 
 # Per-joint error weights (35 entries = num_bodies - 1, body traversal order)
 # Includes 0.0 for left_foot and right_foot which are FIXED bodies (no DOF)
