@@ -55,9 +55,12 @@ class ViewMotionEnv(char_env.CharEnv):
         motion_times = self._time_buf * self._time_scale
         root_pos, root_rot, root_vel, root_ang_vel, joint_rot, dof_vel = self._motion_lib.calc_motion_frame(motion_ids, motion_times)
         joint_dof = self._motion_lib.joint_rot_to_dof(joint_rot)
-        
         char_id = self._get_char_id()
+        FOOT_OFFSET = 0.1585  # ankle → 발바닥 최저점 거리
+        root_pos = root_pos.clone()
+        root_pos[:, 2] += FOOT_OFFSET
         
+            
         self._engine.set_root_pos(None, char_id, root_pos)
         self._engine.set_root_rot(None, char_id, root_rot)
         self._engine.set_root_vel(None, char_id, 0.0)

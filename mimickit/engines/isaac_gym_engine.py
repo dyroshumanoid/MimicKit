@@ -54,8 +54,8 @@ class IsaacGymEngine(engine.Engine):
         
         self._gym = gymapi.acquire_gym()
         
-        sim_freq = config.get("sim_freq", 60)
-        control_freq = config.get("control_freq", 10)
+        sim_freq = config.get("sim_freq", 100)
+        control_freq = config.get("control_freq", 100)
         assert(sim_freq >= control_freq and sim_freq % control_freq == 0), \
             "Simulation frequency must be a multiple of the control frequency"
 
