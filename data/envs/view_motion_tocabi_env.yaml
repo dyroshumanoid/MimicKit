@@ -1,6 +1,6 @@
 env_name: "view_motion"
 char_file: "data/assets/tocabi/tocabi.xml"
-motion_file: "data/motions/tocabi/tocabi_walk.pkl"
+motion_file: "data/motions/tocabi/tocabi_walk_jump.pkl"
 camera_mode: "track"
 episode_length: 20.0
 global_obs: False
