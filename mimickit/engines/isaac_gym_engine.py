@@ -419,13 +419,14 @@ class IsaacGymEngine(engine.Engine):
         low_arr = np.asarray(dof_low)
         high_arr = np.asarray(dof_high)
 
+        # Filter out free/floating-base joint DOFs (both limits == 0.0, i.e. unlimited/unactuated)
+        mask = ~((low_arr == 0.0) & (high_arr == 0.0))
+        low_arr = low_arr[mask]
+        high_arr = high_arr[mask]
+
         # Sanity checks per-DOF - raise exceptions for bad limits
         threshold = 1e8
         for i, (l, h) in enumerate(zip(low_arr, high_arr)):
-            # both bounds zero
-            if l == 0 and h == 0:
-                raise ValueError(f"Env {env_id} Obj {obj_id} DoF {i}: both lower and upper limits are 0.0 — this may indicate a fixed joint or missing limits. Either upper or lower limit must be non-zero for all DoFs.")
-
             # infinite or NaN bounds
             if not np.isfinite(l) or not np.isfinite(h):
                 raise ValueError(f"Env {env_id} Obj {obj_id} DoF {i}: invalid bound detected (lower={l}, upper={h}).")
@@ -434,7 +435,7 @@ class IsaacGymEngine(engine.Engine):
             if (abs(l) > threshold or abs(h) > threshold):
                 raise ValueError(f"Env {env_id} Obj {obj_id} DoF {i}: invalid bound detected (lower={l}, upper={h}).")
 
-        return dof_low, dof_high
+        return low_arr, high_arr
 
     def get_obj_pd_gains(self, env_id, obj_id):
         kp = self._obj_kp[obj_id][env_id].cpu().numpy()

@@ -1,0 +1,59 @@
+env_name: "deepmimic"
+
+char_file: "data/assets/p73/p73.xml"
+camera_mode: "track"
+
+episode_length: 10.0 # seconds
+global_obs: True
+root_height_obs: True
+pose_termination: True
+pose_termination_dist: 1.0 # m
+enable_phase_obs: False
+enable_tar_obs: True
+num_phase_encoding: 4
+tar_obs_steps: [1, 2, 3]
+rand_reset: True
+zero_center_action: True
+log_tracking_error: False
+
+ref_char_offset: [2.0, 0.0, 0.0] # m
+
+# [root_pos(3), root_rot_quat(4, xyzw), joint_angles(13)]
+# Joint order (body traversal): L_HipRoll, L_HipPitch, L_HipYaw(Thigh_Link),
+#                                L_Knee, L_AnklePitch(AnkleRoll_Link), L_AnkleRoll(Foot_Link),
+#                                R_HipRoll, R_HipPitch, R_HipYaw(Thigh_Link),
+#                                R_Knee, R_AnklePitch(AnkleRoll_Link), R_AnkleRoll(Foot_Link),
+#                                WaistYaw
+init_pose: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
+    0.0, +0.36, 0.0, +0.77, -0.41, 0.0,
+    0.0, -0.36, 0.0, -0.77, +0.41, 0.0,
+    0.0]
+
+enable_early_termination: True
+key_bodies: ["head", "left_hand", "right_hand", "left_foot", "right_foot"]
+contact_bodies: ["left_foot", "right_foot"]
+
+motion_file: "data/motions/p73/p73_walk.pkl"
+
+# Per-joint error weights (13 entries = num_bodies - 1, body traversal order)
+# All non-root bodies have a DOF (no fixed bodies in p73)
+# Body order: L_HipRoll_Link, L_HipPitch_Link, L_Thigh_Link(HipYaw),
+#             L_Knee_Link, L_AnkleRoll_Link(AnklePitch), L_Foot_Link(AnkleRoll),
+#             R_HipRoll_Link, R_HipPitch_Link, R_Thigh_Link(HipYaw),
+#             R_Knee_Link, R_AnkleRoll_Link(AnklePitch), R_Foot_Link(AnkleRoll),
+#             WaistYaw_Link
+joint_err_w: [1.0, 1.0, 1.0, 0.6, 0.5, 0.5,
+              1.0, 1.0, 1.0, 0.6, 0.5, 0.5,
+              1.0]
+
+reward_pose_w: 0.5
+reward_vel_w: 0.1
+reward_root_pose_w: 0.15
+reward_root_vel_w: 0.1
+reward_key_pos_w: 0.15
+
+reward_pose_scale: 0.25
+reward_vel_scale: 0.01
+reward_root_pose_scale: 5.0
+reward_root_vel_scale: 1.0
+reward_key_pos_scale: 10.0

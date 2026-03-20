@@ -1,0 +1,8 @@
+env_name: "view_motion"
+char_file: "data/assets/p73/p73.xml"
+motion_file: "data/motions/p73/p73_walk_jump.pkl"
+camera_mode: "track"
+episode_length: 20.0
+global_obs: False
+root_height_obs: True
+key_bodies: ["L_Foot_Link", "R_Foot_Link"]
