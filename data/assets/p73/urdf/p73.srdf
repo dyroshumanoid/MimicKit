@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<robot name="p73">
+
+  <!-- ========================= -->
+  <!--        GROUPS             -->
+  <!-- ========================= -->
+
+  <group name="r_leg">
+    <joint name="R_HipRoll_Joint"/>
+    <joint name="R_HipPitch_Joint"/>
+    <joint name="R_HipYaw_Joint"/>
+    <joint name="R_Knee_Joint"/>
+    <joint name="R_AnklePitch_Joint"/>
+    <joint name="R_AnkleRoll_Joint"/>
+  </group>
+
+  <group name="l_leg">
+    <joint name="L_HipRoll_Joint"/>
+    <joint name="L_HipPitch_Joint"/>
+    <joint name="L_HipYaw_Joint"/>
+    <joint name="L_Knee_Joint"/>
+    <joint name="L_AnklePitch_Joint"/>
+    <joint name="L_AnkleRoll_Joint"/>
+  </group>
+
+  <group name="torso">
+    <joint name="WaistYaw_Joint"/>
+  </group>
+
+
+  <!-- ================================================= -->
+  <!--              REFERENCE CONFIGURATIONS             -->
+  <!-- ================================================= -->
+  <group_state name="half_sitting" group="all">
+    <joint name="root_joint" value="0 0 0.8532827 0 0 0 1"/>
+
+    <joint name="R_HipRoll_Joint"    value="0"/>
+    <joint name="R_HipPitch_Joint"   value="-0.453786"/>
+    <joint name="R_HipYaw_Joint"     value="0"/>
+    <joint name="R_Knee_Joint"       value="-0.872665"/>
+    <joint name="R_AnklePitch_Joint" value="0.418879"/>
+    <joint name="R_AnkleRoll_Joint"  value="0"/>
+
+    <joint name="L_HipRoll_Joint"    value="0"/>
+    <joint name="L_HipPitch_Joint"   value="0.453786"/>
+    <joint name="L_HipYaw_Joint"     value="0"/>
+    <joint name="L_Knee_Joint"       value="0.872665"/>
+    <joint name="L_AnklePitch_Joint" value="-0.418879"/>
+    <joint name="L_AnkleRoll_Joint"  value="0"/>
+
+    <joint name="WaistYaw_Joint" value="0"/>
+  </group_state>
+
+</robot>
